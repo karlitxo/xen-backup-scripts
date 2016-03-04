@@ -1,0 +1,156 @@
+#!/bin/bash
+reldir=`dirname $0`
+cd $reldir
+directory=`pwd`
+. ./config
+echo start backup in $directory of domU $vm_name  and lvm disks 
+if [  -z "$disk_list_for_dd" -o ! -e "$disk_list_for_dd" ]; then
+echo not set  $disk_list_for_dd in  config file or file  $disk_list_for_dd doesnt exists in $directory
+echo start script   ./generate_lvm_create_script
+echo error
+exit 1
+fi
+if [ ! -e "$startup_script" -o ! -e "$shutdown_script"  ]; then
+echo  no start stop scripts  $startup_script and $shutdown_script in $directory so i go to toilet
+echo error
+exit 1
+fi
+## uzimam varijable procesa skripte jer mi treba unificitarti kod za kreiranje snapshota
+process=$$
+### uzimam velcinu snapshota u MB kao varijablu ako zatreba izmejniti eventualno npr ako je puno izmjena u toku na orgninalnim dskovima
+snap_size=1200
+###cleanup kod
+cleanup()
+# cleanup function
+{
+sleep 3
+echo deleteing orphan snapshot if left somehow
+for particija in `cat $disk_list_for_dd | grep -v \# | awk '{print $1}'`
+do
+sleep 2
+if [  -n "$stay_online" -a "$stay_online" != "false" ]; then
+	ime_snap_particije=${particija}_bkp_${process}_
+	 if [ -e "/dev/${lvm_group}/${ime_snap_particije}" ]; then
+	   lvremove -f /dev/${lvm_group}/${ime_snap_particije}
+		if [ $? -ne 0 ]; then
+		 echo error with deleting snapshots ...
+		fi
+	 fi
+fi
+done
+}
+control_c()
+# run if user hits control-c
+{
+echo "*** i go out from here   ***"
+echo cleaning 
+cleanup
+echo go out cause someone press  ctrl c
+exit $?
+}
+### TRAP CODE za ctrl c 
+# trap keyboard interrupt (control-c)
+trap control_c 1 2 3 15
+echo virtuel domU named  $vm_name which is placed as root disk on  /dev/mapper/$lvm_group-$storage_lvm
+echo Name domU  $vm_name
+#### startam pravi kod 
+if [  -n "$stay_online" -a "$stay_online" != "false" ]; then
+echo I do online live backup using lvm snapshots  ...
+stay_online=true
+DATAPREP=`virsh dominfo $vm_name 2>&1`
+ERROR=`echo $DATAPREP |head -1 | grep error `
+if [ -n "$ERROR" ]; then
+       echo "Unknown - Virtual machine $vm_name does not exist"
+	echo stopping machine 
+       exit 1
+    fi
+DATA=`echo -e "$DATAPREP" | grep State | awk '{print $2}'`
+if [ "$DATA" == "shut" ]; then 
+stay_online=false
+echo but machine is lready down so i do offline backup
+fi
+
+else
+echo domU must be paused \(default\) or off to do this kind of backup
+echo if from soem reason wnat offline backup in this moment you hace 5 s to stop thisscript and shutdown machine and then redo script
+sleep 5
+virsh suspend $vm_name
+stay_online=false
+fi
+if [ $? -ne 0 ]; then
+echo error shutting down machine 
+echo error
+exit 1
+fi
+
+#ovdje pocinje akcija
+#ako je stay_online napravi snapshote sa oprezom tj prvo suspenduj pa pukni snapshot
+if [  -n "$stay_online" -a "$stay_online" != "false" ]; then
+virsh suspend $vm_name
+for particija in `cat $disk_list_for_dd | grep -v \# | awk '{print $1}'`
+do
+ime_snap_particije=${particija}_bkp_${process}_
+echo making  snapshot of  /dev/${lvm_group}/${particija} na /dev/${lvm_group}/${ime_snap_particije} velicine 1024M
+echo lvcreate -L${snap_size}M -s -n $ime_snap_particije $initial_lvm_path/$particija
+lvcreate -L${snap_size}M -s -n $ime_snap_particije  $initial_lvm_path/$particija
+if [ $? -ne 0 ]; then
+echo error creating   snashota of $particija
+echo cleanup and go out to toilet
+cleanup
+exit 1
+fi
+done
+virsh resume $vm_name
+fi
+
+for particija in `cat $disk_list_for_dd | grep -v \# | awk '{print $1}'` 
+do
+sleep 5
+which pigz 2>&1 > /dev/null
+if [ $? -eq 0 ]; then
+echo using  pigz cause of performance of compression
+command=pigz
+else
+echo if not installed pigh i go simple gzip 
+command=gzip
+fi
+if [  -n "$stay_online" -a "$stay_online" != "false" ]; then
+ime_snap_particije=${particija}_bkp_${process}_
+echo starting  online backup with  dd if=/dev/$lvm_group/$ime_snap_particije  $command -c  ${lvm_group}-${vm_name}-${particija}.dd.tgz 
+dd if=/dev/$lvm_group/$ime_snap_particije | $command -c  > $lvm_group-$vm_name-${particija}.dd.tgz
+PSA=( "${PIPESTATUS[@]}" )
+if [ ${PSA[0]} -ne 0 ] || [ ${PSA[1]} -ne 0 ]; then
+echo error with   dd  online  backup | tee -a zadnji_backup.log
+echo clean garbage and go out to toile now  | tee -a zadnji_backup.log
+echo i also delte current file   $lvm_group-$vm_name-${particija}.dd.tgz  | tee -a zadnji_backup.log
+cleanup
+rm  $lvm_group-$vm_name-${particija}.dd.tgz
+exit 1
+fi
+echo  deleting all snapshot and go further
+sleep 2
+lvremove -f /dev/${lvm_group}/${ime_snap_particije}
+else
+echo start backup with  dd if=/dev/mapper/$lvm_group-$particija  $command -c  ${lvm_group}-${vm_name}-${particija}.dd.tgz
+dd if=/dev/$lvm_group/$particija | $command -c  > $lvm_group-$vm_name-${particija}.dd.tgz
+PSA=( "${PIPESTATUS[@]}" )
+if [ ${PSA[0]} -ne 0 ] || [ ${PSA[1]} -ne 0 ]; then
+echo error with  dd offline  backup | tee -a zadnji_backup.log
+echo cleaning and delting partial file  polovicni fajl $lvm_group-$vm_name-${particija}.dd.tgz | tee -a zadnji_backup.log
+rm $lvm_group-$vm_name-${particija}.dd.tgz
+exit 1
+fi
+fi
+done
+
+if [  -n "$stay_online" -a "$stay_online" != "false" ]; then
+echo  i finished  online snapshots backup so go further
+cleanup
+else
+echo resume machien in case it is paused and not shut down  ...
+virsh  resume  $vm_name
+fi
+echo backup dd tipa  stay_online="$stay_online" zavsren na `date` i nalazi se u fajlovima koji pocinju sa $lvm_group-$vm_name | tee -a zadnji_backup.log
+if [  -n "$stay_started" -a "$stay_started" != "false" ]; then
+./start_vm -m $vm_name 
+fi

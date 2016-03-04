@@ -1,0 +1,43 @@
+#!/bin/bash
+reldir=`dirname $0`
+cd $reldir
+directory=`pwd`
+. ./config
+
+# Usage string
+appname=`basename $0`
+USAGE="Usage: ${appname}  \n 
+command which make file named generate_lvm_disk_script which hase lvm create script for domU " 
+
+ispis_gresku()
+{
+if [ $? -ne "0" ]; then
+echo Error :
+echo -e $1
+exit $2
+fi
+}
+
+
+echo  This script make fsk creation file named generate_lvm_disk_script for domU  $vm_name  defined in config
+echo 
+echo check if we have machine named as  $vm_name
+virsh list  --all | grep -w "${vm_name}"
+if [ $? -ne 0 ]; then
+echo "machine  $vm_name doesnt exits so i stop "
+exit 4
+fi
+echo checking space details
+echo "Name                  Path                               Type    Capacity  Allocation"
+echo ---------------------------------------------------------------------------------------
+virsh vol-list $lvm_group --details | grep -w "$(virsh domblklist $vm_name | awk '{print $2}' | grep $lvm_group )"
+echo ------------------------------------------------------------------------------------
+echo  making lvm scripts now _
+lvs --units B  -o  lv_name,lv_size,vg_name $lvm_group | grep -w "$(virsh vol-list $lvm_group  | grep -w "$(virsh domblklist $vm_name | awk '{print $2}' | grep -w $lvm_group )" | awk '{print $1}')"  | awk '{print "lvcreate -n " $1" -L "$2" "$3}' >  generate_lvm_disk_script
+if [ $? -ne 0 ]; then
+echo "unable to generate script named generate_lvm_disk_script, see error above  "
+exit 1
+fi
+echo script created in generate_lvm_disk_script with content
+cat generate_lvm_disk_script
+exit 0

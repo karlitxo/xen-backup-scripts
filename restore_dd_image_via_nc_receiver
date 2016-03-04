@@ -1,0 +1,66 @@
+#!/bin/bash
+
+
+# Usage string
+appname=`basename $0`
+USAGE="Usage: ${appname}  -p <port> -l <lvm_path> " 
+ispis_gresku()
+{
+if [ $? -ne "0" ]; then
+echo Error :
+echo $1
+exit $2
+fi
+}
+# check if anything is on commandline
+let $# || { ispis_gresku "Need to set parameters  $USAGE" 1; }  # Exit if no arguments
+
+
+# Handle incoming arguments
+while getopts :p:l: opt
+do
+    case $opt in
+    p) port=$OPTARG ;;
+    l) lv_path=$OPTARG ;;
+   \?) 	echo "Sorry no such option, please try again" ;
+echo $USAGE;
+ exit 1;;
+*)
+        # Should not occur
+          echo "Unknown error while processing options"
+	exit 1
+          ;;
+	
+esac
+done
+test -n "$lv_path"
+ispis_gresku " not set correct lvm " 1
+echo This script accepts and wait stream ind put it in image $lv_path from   port  $port  and should be started first in this comunication
+echo refarding restore_dd_image_via_nc_sender  which is started afterwards
+echo if want to contine wait for 5 s
+echo or  ctrl c to go out 
+echo continue in  5 s
+sleep 9
+lvdisplay | grep "$lv_path" > /dev/null
+ispis_gresku "no existing  lvm $lv_path" 1
+echo  doing sending to  $ipadr :  $port and  image $lv_path
+echo sleep 5 s
+echo "are u sure !!! (y\\n)"
+read ans
+test -n $ans -a "$ans" = "y"
+ispis_gresku "you havent chooesed  y so i go out , make your mind .. " 1
+echo doing real sending
+echo using gzip command to uncompress stream 
+which pv 2>&1 > /dev/null
+if [ $? -eq 0 ]; then
+echo using pv to make progess bar
+echo starting command and waiting on port  $port starting of command  restore_dd_image_via_nc_sender from source server
+command_pv=pv
+fi
+if [ -n "$command_pv" ]; then
+nc -l $port | gzip -dc |pv |dd of="${lv_path}" bs=1024k
+else
+nc -l $port | gzip -dc | dd of="${lv_path}" bs=1024k
+fi
+ispis_gresku "restore problem, please check " 1
+echo finished with status ok restore of $lv_path from some other host

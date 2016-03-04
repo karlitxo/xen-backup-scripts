@@ -1,0 +1,24 @@
+#!/bin/bash
+reldir=`dirname $0`
+cd $reldir
+directory=`pwd`
+echo start creation of file   $disk_list_for_tar in directory $directory
+. ./config
+echo virtual machine $vm_name which is placed  on /dev/mapper/$lvm_group-$vm_name
+echo notice: this script doesnt take lvm volumes for swap if named so
+echo \#lvm       \#exclude fajl > $disk_list_for_tar
+echo \#lvm        > $disk_list_for_dd
+virsh domblklist $vm_name | grep $lvm_group | awk -F$lvm_group/ '{print $2}' |grep -v swap | grep -v -e '^$' >> $disk_list_for_tar
+virsh domblklist $vm_name | grep $lvm_group | awk -F$lvm_group/ '{print $2}' |grep -v swap | grep -v -e '^$' >> $disk_list_for_dd
+echo contents of  file $disk_list_for_tar is
+echo ----start--------
+cat $disk_list_for_tar
+echo ---end of fle -------
+echo please exclude ones which you do not want to go to tar file backup with settings second column to be file with exclude patterns in form of
+echo ./dir1
+echo ./dir2
+echo content of file   $disk_list_for_dd is
+echo ----start--------
+cat $disk_list_for_dd
+echo ----end of file-----
+echo plase check manualy list , excldue swap if speretae disk is used

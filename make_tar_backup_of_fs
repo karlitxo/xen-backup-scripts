@@ -1,0 +1,158 @@
+#/bin/bash
+reldir=`dirname $0`
+cd $reldir
+directory=`pwd`
+echo starting  backup in  $directory
+. ./config
+if [ -z "$disk_list_for_tar" -o ! -e "$disk_list_for_tar" ]; then
+echo no file  $disk_list_for_tar so cannot continue or not written in config file 
+echo error
+exit 1
+fi
+if [ ! -e "$startup_script" -o ! -e "$shutdown_script"  ]; then
+echo  doesnt exist start and stop script named  $startup_script  and  $shutdown_script so i go out to toilet
+echo error
+exit 1
+fi
+if [ -z "$part_number"  ]; then
+echo no variable part_number in config so i set default as 1 , it is first partition on disk to be mounted
+part_number=1
+fi
+
+echo INFO:
+echo this script will make mount of partition  ${part_number} from all disks given in  $disk_list_for_tar 
+echo that is default
+echo LIMIT NOTICE:  if want to make lvm mount insied domU this is not implementd , also if multiple partitions is ised on disks, this code only backup part number  given in config file as $part_number 
+echo current nuber of partition to be backued up is   $part_number
+
+###cleanup kod
+cleanup()
+# cleanup function
+{
+sleep 3
+umount $mount_point
+if [ $? -ne 0 ]; then
+echo mount error
+fi
+sleep 2
+dmsetup remove -f $(ls -1 /dev/mapper/${lvm_group}* | grep ${process}| grep -v '\-cow'| grep [1-4]$ )
+kpartx -d $initial_lvm_path/$ime_bkp_particije
+if [ $? -ne 0 ]; then
+echo error deleting kpartx mapping
+fi
+sleep 2
+rm -r $dir_backupa
+sleep 1
+lvremove -f /dev/$lvm_group/$ime_bkp_particije
+if [ $? -ne 0 ]; then
+echo error deleting snapshot
+fi
+}
+control_c()
+# run if user hits control-c
+{
+echo "*** go out of code  ***"
+echo cleaning garbage
+cleanup
+echo go out casue someone press ctrl c
+exit $?
+}
+### TRAP CODE za ctrl c 
+# trap keyboard interrupt (control-c)
+trap control_c 1 2 3 15
+#### startam pravi kod 
+if [  -n "$stay_online" -a "$stay_online" != "true" ]; then
+./shutdown_vm -m $vm_name 
+fi
+if [ $? -ne 0 ]; then
+echo error shuting down dumU $vm_name
+echo error
+exit 1
+fi
+
+for particija in `cat $disk_list_for_tar | grep -v \# | awk '{print $1}'` 
+do
+echo making snapshot of disk which is  $initial_lvm_path/$particija
+echo domU is  $vm_name
+echo first makinh snapshots to do online backup of partition for disk $initial_lvm_path/$particija
+process=$$
+ime_bkp_particije=${particija}_bkp_${process}_
+dir_backupa=${particija}_bkp
+exclude=`cat $disk_list_for_tar| grep -w $particija | awk '{print $2}'` 
+echo lvcreate -L1024M -s -n $ime_bkp_particije $initial_lvm_path/$particija
+lvcreate -L1024M -s -n $ime_bkp_particije  $initial_lvm_path/$particija
+if [ $? -ne 0 ]; then
+echo error creating snapshot
+echo error
+exit 1
+fi
+kpartx -a $initial_lvm_path/$ime_bkp_particije
+if [ $? -ne 0 ]; then
+echo error adding kpartx mounting points
+echo error
+echo cleanup
+cleanup
+exit 1
+fi
+
+echo mounting on  location $dir_backupa from  $initial_lvm_path/$ime_bkp_particije
+if [ ! -e "$dir_backupa" ]; then 
+mkdir  $dir_backupa
+fi
+sleep 6
+mount_point=`ls -1 /dev/mapper/${lvm_group}* | grep ${process}| grep -v '\-cow'| grep ${part_number}$` 
+if [ $? -ne 0 ]; then
+echo no  mount point in /dev/mapper/${lvm_group} koji odgovara $ime_bkp_particije
+echo cleaning 
+sleep 1
+cleanup
+exit 1
+fi
+mount $mount_point $dir_backupa -o ro
+if [ $? -ne 0 ]; then
+echo error mounting
+echo cleaing leftovers
+sleep 3
+cleanup
+echo error
+exit 1
+fi
+echo success mount ,now making backup from $particija_bkp
+if [  -n "$stay_online" -a "$stay_online" != "true" ]; then
+ime_dumpa=offline_backup_$lvm_group-${vm_name}-$particija.tgz
+else
+ime_dumpa=stay_online_backup_$lvm_group-${vm_name}-$particija.tgz
+fi
+which pigz 2>&1 > /dev/null
+if [ $? -eq 0 ]; then
+echo using pigz command cause of perf
+command=pigz
+else
+echo if not pigz installed using simple gzip
+command=gzip
+fi
+if [ -n "$exclude" -a  -f  "$exclude"  ]; then
+echo apply exclude def from  $exclude
+tar cpv --ignore-failed-read - -C $dir_backupa . -X $exclude |  $command -c  > $ime_dumpa
+else
+echo make backup with no exclusion
+tar cpv --ignore-failed-read - -C $dir_backupa . | $command -c   > $ime_dumpa
+fi
+if [ $? -ne 0 ]; then
+echo error while making backup
+echo check error yourself and fix situation
+echo cleaning leftovers
+cleanup
+echo error
+exit 1
+fi
+sleep 2
+cleanup
+echo backup finished on  `date` and is in   $ime_dumpa
+done
+
+echo finished backup of disk mentoned in $disk_list_for_tar which contents was
+cat $disk_list_for_tar
+if [  -n "$stay_started" -a "$stay_started" = "true" ]; then
+./start_vm -m $vm_name 
+fi

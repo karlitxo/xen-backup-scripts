@@ -1,0 +1,67 @@
+#!/bin/bash
+
+
+# Usage string
+appname=`basename $0`
+USAGE="Usage: ${appname} -i  <ip_address> -p <port> -l <lvm_path> " 
+ispis_gresku()
+{
+if [ $? -ne "0" ]; then
+echo Error :
+echo $1
+exit $2
+fi
+}
+# check if anything is on commandline
+let $# || { ispis_gresku "YOu need to set parameters  $USAGE" 1; }  # Exit if no arguments
+
+
+# Handle incoming arguments
+while getopts :i:p:l: opt
+do
+    case $opt in
+    i) ipadr=$OPTARG ;;
+    p) port=$OPTARG ;;
+    l) lv_path=$OPTARG ;;
+   \?) 	echo "Sorry no such option, please try again" ;
+echo $USAGE;
+ exit 1;;
+*)
+        # Should not occur
+          echo "Unknown error while processing options"
+	exit 1
+          ;;
+	
+esac
+done
+ping   -c 1 "$ipadr" 
+ispis_gresku "Ip address or host  $ipadr doesnt exist" 1
+test -n "$lv_path"
+ispis_gresku "not set right lvm " 1
+echo This script send from  $lv_path stream to  $ipadr $port which should already have started   script
+echo restore_dd_image_via_nc_receiver in wait state on port  $port and lvm $lv_path
+echo if want to continue wait 5s or ctrl c to stop here
+sleep 9
+lvdisplay | grep "$lv_path" > /dev/null
+ispis_gresku "no lvm  $lv_path" 1
+echo  doing sending to  $ipadr :  $port and  image $lv_path
+echo sleep 5 s
+echo "are u sure !!! (y\\n)"
+read ans
+test -n $ans -a "$ans" = "y"
+ispis_gresku "you havent choose  y so i go out ,make your mind  .. " 1
+echo doing real sending
+echo using gzip to compress stream
+which pv 2>&1 > /dev/null
+if [ $? -eq 0 ]; then
+echo using pv comand to have progressbar
+command_pv=pv
+fi
+if [ -n "$command_pv" ]; then
+dd if="${lv_path}" bs=1024k  | gzip -c |"$command_pv" | nc  $ipadr $port
+else
+dd if="${lv_path}" bs=1024k  | gzip -c |  nc  $ipadr $port
+fi
+ispis_gresku "sending data to $ipadr $port have problems, check firewall or lvm space on destination" 1
+echo finished with status ok sending $lv_path to $ipadr $port
+

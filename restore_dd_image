@@ -1,0 +1,82 @@
+#!/bin/bash
+
+
+# Usage string
+appname=`basename $0`
+USAGE="Usage: ${appname} -i   <mage_file> -l <lvm_path> " 
+ispis_gresku()
+{
+if [ $? -ne "0" ]; then
+echo Error :
+echo $1
+exit $2
+fi
+}
+# check if anything is on commandline
+let $# || { ispis_gresku "Niste postavili paraetre a trebate $USAGE" 1; }  # Exit if no arguments
+
+
+# Handle incoming arguments
+while getopts :i:l: opt
+do
+    case $opt in
+    i) image=$OPTARG ;;
+    l) lv_path=$OPTARG ;;
+   \?) 	echo "Sorry no such option, please try again" ;
+echo $USAGE;
+ exit 1;;
+*)
+        # Should not occur
+          echo "Unknown error while processing options"
+	exit 1
+          ;;
+	
+esac
+done
+test  -e "$image" 
+ispis_gresku "image  $image doesnt exists" 1
+test -n "$lv_path"
+ispis_gresku " not set correct lvm " 1
+echo This script return image from file  $image ch is in gzipped format into  lvm  lready made 
+echo if not made , make it first and ctrl c to go to out 
+echo  this operaton is dangeorus if mess some other lvm name
+echo continue in  5 s
+sleep 9
+lvdisplay | grep "$lv_path" > /dev/null
+ispis_gresku "that lvm $lv_path does not exists" 1
+lvm_size=$(expr $(lvs ${lv_path} --segments --units B | awk 'NR==2{print $6}' | awk -F\B '{print $1}')) 
+file $image | grep "gzip compressed data" 2>&1 > /dev/null
+ispis_gresku "file  $image s not gzip format and it must be  "  1
+image_size=$(echo  "$(expr  $(gzip  -l ${image} | awk 'NR==2{ print $2}' )  ) " | bc ) 
+ispis_gresku "$image  is not  gzip format  " 1
+if [ $lvm_size -ge $image_size ]; then 
+echo  doing restore if image $image to $lv_path
+else  
+ispis_gresku "cant restore image  $image to $lv_path cause size of $lv_path ($lvm_size M) is bigger than uncompressed image size ($image_size M)" 1
+echo please make $lv_path big atleast $lvm_size M
+fi  
+echo sleep 5 s
+echo "are u sure !!! (y\\n)"
+read ans
+test -n $ans -a "$ans" = "y"
+ispis_gresku "youd dint choose y so i go out , make your mind please .. " 1
+echo doing real restore ...
+which pigz 2>&1 > /dev/null
+if [ $? -eq 0 ]; then
+echo using pigz cause of performance 
+command=pigz
+else
+echo using gzip uncompress
+command=gzip
+fi
+which pv 2>&1 > /dev/null
+if [ $? -eq 0 ]; then
+echo using pv command to see progress
+command_pv=pv
+fi
+if [ -n "$command_pv" ]; then
+$command -dc "$image" | "$command_pv" | dd of="${lv_path}" bs=1024k
+else
+$command -dc "$image" |  dd of="${lv_path}" bs=1024k
+fi
+echo finished restore ok from "$image" to "${lv_path}"

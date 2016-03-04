@@ -1,0 +1,43 @@
+#!/bin/bash
+
+
+# Usage string
+appname=`basename $0`
+USAGE="Usage: ${appname} -m <vmaschine> " 
+
+# check if anything is on commandline
+let $# || { echo you havent set parameters $USAGE ; exit 1; }  # Exit if no arguments
+
+# Handle incoming arguments
+while getopts :m: opt
+do
+    case $opt in
+    m) vm_name=$OPTARG ;;
+   \?) 	echo "Sorry no such option, please try again" ;
+echo $USAGE;
+ exit 1;;
+*)
+        # Should not occur
+          echo "Unknown error while processing options"
+          ;;
+	
+esac
+done
+
+
+echo Starting  $vm_name
+virsh start $vm_name
+echo Status:
+virsh dominfo $vm_name | grep State | grep -v  "shut off"
+if [ $? -ne 0 ]; then
+echo error starting domU
+echo starting again
+virsh start $vm_name
+fi
+echo Status:
+virsh dominfo $vm_name | grep State | grep -v "shut off"
+if [ $? -ne 0 ]; then
+echo error when starting machine please check
+exit 1
+fi
+

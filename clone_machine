@@ -1,0 +1,129 @@
+#!/bin/bash
+reldir=`dirname $0`
+cd $reldir
+directory=`pwd`
+. ./config
+
+# Usage string
+appname=`basename $0`
+USAGE="Usage: ${appname} -a  <suffix> \n 
+where suffix is addedd to name of machine and all disks it used" 
+###cleanup kod
+cleanup()
+# cleanup function
+{
+sleep 3
+for particija in `virsh vol-list $lvm_group  | grep -w "$(virsh domblklist $vm_name | grep $lvm_group | awk '{print $2"'"_${suffix}"'"}')" | awk '{print $1}' `
+do
+echo cleaning and deleting partitions for cloned machine !!!
+virsh  vol-delete ${particija} --pool $lvm_group 
+virsh pool-refresh $lvm_group
+virsh undefine ${vm_name}_${suffix}
+ispis_gresku "deleting disks whch created during clone process ..." 2
+done
+virsh resume $vm_name
+}
+control_c()
+# run if user hits control-c
+{
+echo "*** exiting casue someone put ctrl-c  ***"
+echo cleaning now ...
+cleanup
+exit $?
+}
+### TRAP CODE za ctrl c 
+# trap keyboard interrupt (control-c)
+trap control_c 1 2 3 15
+
+ispis_gresku()
+{
+if [ $? -ne "0" ]; then
+echo Error :
+echo -e $1
+exit $2
+fi
+}
+# check if anything is on commandline
+let $# || { ispis_gresku "YOu haven't put parameters and you should $USAGE" 1; }  # Exit if no arguments
+
+
+# Handle incoming arguments
+while getopts :a: opt
+do
+    case $opt in
+    a) suffix=$OPTARG ;;
+   \?) 	echo "Sorry no such option, please try again" ;
+echo $USAGE;
+ exit 1;;
+*)
+        # Should not occur
+          echo "Unknown error while processing options"
+	exit 1
+          ;;
+	
+esac
+done
+echo This script clones machine named  $vm_name defined in  config file and make clone machine with suffix for name and all disks  $suffix 
+echo name of new machine will be : ${vm_name}_${suffix}
+echo please check if space is enough to cerate clone casue havent time to make script to check mylsef
+echo 
+echo 
+echo check if we have any source machine named $vm_name ....
+virsh list  --all | grep -w "${vm_name}"
+if [ $? -ne 0 ]; then
+echo "doesn't exist source machine  $vm_name to be cloend so i stop here and go to toilet ..." | tee clone_log.txt
+exit 4
+fi
+echo check space with details, use your own eyes to check 
+echo "Name                  Path                               Type    Capacity  Allocation"
+echo ---------------------------------------------------------------------------------------
+virsh vol-list $lvm_group --details | grep -w "$(virsh domblklist $vm_name | awk '{print $2}' | grep $lvm_group )"
+echo ------------------------------------------------------------------------------------
+echo and you have space   \(take attention on  Available part\)
+virsh pool-refresh $lvm_group && virsh pool-info $lvm_group  
+echo ------------------------------------------------------------------------------------
+echo  this operation is deadly if you do not check this with your own eyes 
+echo check if already exists machine with name ${vm_name}_${suffix} , if do ,exit here 
+virsh list  --all | grep -w "${vm_name}_${suffix}"
+if [ $? -eq 0 ]; then
+echo "already exists machine named ${vm_name}_${suffix} , i exit here now and go to toilet ...." | tee clone_log.txt
+exit 3
+fi
+echo check if partitions to be cloned already exists, if do i go out and stop
+virsh vol-list $lvm_group  | grep -w "$(virsh domblklist $vm_name | grep $lvm_group | awk '{print $2"'"_${suffix}"'"}')"
+if [ $? -eq 0 ]; then
+echo "already exits disk to be cloend so i stop here and don't want to ruin something, i go out " | tee clone_log.txt
+exit 2
+fi
+echo continue in 5 s
+echo if not sure just press   ctrl+c and go exit
+sleep 10
+echo ..
+sleep 2
+echo now i doing cloning disk to  _${suffix} ....t
+virsh domblklist ${vm_name} | grep $lvm_group | awk '{print $2"'"_${suffix}"'"}'
+echo .....
+sleep 3
+for particija in `virsh vol-list $lvm_group | grep -w "$(virsh domblklist $vm_name | awk '{print $2}' | grep $lvm_group )" | awk '{print $1}' ` 
+do
+virsh  vol-clone $particija ${particija}_${suffix} --pool $lvm_group 
+if [ $? -ne 0 ]; then
+cleanup
+echo cleaning here and go out  | tee -a clone_log.txt
+exit 1 
+fi
+done
+echo i continue with creation of same xen domU with name  ${vm_name}_${suffix}
+echo pause machine  $vm_name now just to make clone xen definition
+virsh suspend  $vm_name
+
+niz=`virsh domblklist ${vm_name} | grep $lvm_group | awk '{print "--file="$2"'"_${suffix}"'"}' `
+
+virt-clone  -o $vm_name -n ${vm_name}_${suffix}  ${niz[*]}  --preserve-data
+if [ $? -ne 0 ]; then
+echo "something bad happened, i go clean and out to toilet ,,"
+cleanup
+fi
+echo finished with success  cloning of machine  ${vm_name} in ${vm_name}_${suffix} on  $(date) | tee clone_log.txt
+echo back from  suspend state, if paused, otherwise this will give error but i don't care since most job is done correctly
+virsh resume $vm_name

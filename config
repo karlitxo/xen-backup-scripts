@@ -1,0 +1,30 @@
+#main info for xen domU goes here. Suppose that lvm local storage is used and xen is installed for version 4.2 and libvirt 0.10 and up
+#location of lvm group where domU disks are placed
+lvm_group=vmspace
+initial_lvm_path=/dev/$lvm_group
+
+#domU details, replace template with name of domU
+vm_name=template
+storage_lvm=template
+
+#config details for backup scripts
+part_number=1
+disk_list_for_dd=config_dd
+disk_list_for_tar=config_fs
+
+#options for domU to stay started after backup and to do live  or offline backup
+stay_started=false
+stay_online=false
+
+#destination for backup, cifs or nfs 
+
+#variables needed for  sending backups to remote cifs backup_location_details
+dir_sourceource=temp_mount_point
+dir_destinationestination=template
+backup_location_details="//172.20.20.15/d$ -o username=backup_user,password=backup,workgroup=172.20.20.15"
+backup_backup_type=cifs
+
+
+##shutdown i startup scripts names
+shutdown_script=shutdown_vm
+startup_script=start_vm

@@ -1,0 +1,43 @@
+#!/bin/bash
+
+
+# Usage string
+appname=`basename $0`
+USAGE="Usage: ${appname} -m <vmaschine> " 
+
+# check if anything is on commandline
+let $# || { echo you havent set parameters as $USAGE ; exit 1; }  # Exit if no arguments
+
+# Handle incoming arguments
+while getopts :m: opt
+do
+    case $opt in
+    m) vm_name=$OPTARG ;;
+   \?) 	echo "Sorry no such option, please try again" ;
+echo $USAGE;
+ exit 1;;
+*)
+        # Should not occur
+          echo "Unknown error while processing options"
+          ;;
+	
+esac
+done
+
+
+echo Shutting down machine  $vm_name
+virsh shutdown $vm_name
+sleep 20
+echo Status:
+virsh dominfo $vm_name | grep State | grep "shut off"
+if [ $? -ne 0 ]; then
+echo errors when shut down, so destroying it ater 20 s
+virsh destroy $vm_name
+fi
+echo Status:
+virsh dominfo $vm_name | grep State | grep "shut off"
+if [ $? -ne 0 ]; then
+echo error when tried to shut down machine , please check errors 
+exit 1
+fi
+

@@ -1,0 +1,31 @@
+#!/bin/bash
+reldir=`dirname $0`
+cd $reldir
+directory=`pwd`
+echo startam u direktoriju $directory
+
+. ./config
+
+if [ ! -d $dir_source ]; then
+mkdir $dir_source
+fi
+
+mount -t $backup_type $backup_location_details $dir_source
+if [ $? -ne 0 ]; then
+echo echo mounting or missing sudo privilege for mount 
+rmdir $dir_source
+exit 1
+fi
+
+rsync -rvlt *.tgz $dir_source/$dir_destination/
+rsync -rvlt *.xml $dir_source/$dir_destination/
+rsync -rvlt *.cfg $dir_source/$dir_destination/ 
+rsync -rvlt *.log $dir_source/$dir_destination/
+rsync -rvlt *.txt $dir_source/$dir_destination/
+rsync -rvlt config $dir_source/$dir_destination/
+umount $dir_source
+if [ $? -ne 0 ]; then
+echo error when umounting or missing sudo privilege
+exit 1
+fi
+rmdir $dir_source
