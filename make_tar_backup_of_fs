@@ -102,7 +102,7 @@ fi
 sleep 6
 mount_point=`ls -1 /dev/mapper/${lvm_group}* | grep ${process}| grep -v '\-cow'| grep ${part_number}$` 
 if [ $? -ne 0 ]; then
-echo no  mount point in /dev/mapper/${lvm_group} koji odgovara $ime_bkp_particije
+echo no  mount point in /dev/mapper/${lvm_group} which corresponds to  $ime_bkp_particije
 echo cleaning 
 sleep 1
 cleanup
@@ -121,7 +121,7 @@ echo success mount ,now making backup from $particija_bkp
 if [  -n "$stay_online" -a "$stay_online" != "true" ]; then
 ime_dumpa=offline_backup_$lvm_group-${vm_name}-$particija.tgz
 else
-ime_dumpa=stay_online_backup_$lvm_group-${vm_name}-$particija.tgz
+ime_dumpa=online_backup_$lvm_group-${vm_name}-$particija.tgz
 fi
 which pigz 2>&1 > /dev/null
 if [ $? -eq 0 ]; then
