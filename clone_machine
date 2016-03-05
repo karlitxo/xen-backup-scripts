@@ -125,5 +125,5 @@ echo "something bad happened, i go clean and out to toilet ,,"
 cleanup
 fi
 echo finished with success  cloning of machine  ${vm_name} in ${vm_name}_${suffix} on  $(date) | tee clone_log.txt
-echo back from  suspend state, if paused, otherwise this will give error but i don't care since most job is done correctly
+echo back from  suspend state, if paused, otherwise this will give error but i do not care since most job is done correctly
 virsh resume $vm_name
