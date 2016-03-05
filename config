@@ -5,7 +5,6 @@ initial_lvm_path=/dev/$lvm_group
 
 #domU details, replace template with name of domU
 vm_name=template
-storage_lvm=template
 
 #config details for backup scripts
 part_number=1
