@@ -6,7 +6,7 @@ directory=`pwd`
 echo start backup in $directory of domU $vm_name  and lvm disks 
 if [  -z "$disk_list_for_dd" -o ! -e "$disk_list_for_dd" ]; then
 echo not set  $disk_list_for_dd in  config file or file  $disk_list_for_dd doesnt exists in $directory
-echo start script   ./generate_lvm_create_script
+echo start script   ./generate_disk_configs
 echo error
 exit 1
 fi
@@ -51,7 +51,7 @@ exit $?
 ### TRAP CODE za ctrl c 
 # trap keyboard interrupt (control-c)
 trap control_c 1 2 3 15
-echo virtuel domU named  $vm_name which is placed as root disk on  /dev/mapper/$lvm_group-$storage_lvm
+echo virtual domU named  $vm_name
 echo Name domU  $vm_name
 #### startam pravi kod 
 if [  -n "$stay_online" -a "$stay_online" != "false" ]; then
