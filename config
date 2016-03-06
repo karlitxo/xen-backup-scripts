@@ -4,7 +4,7 @@ lvm_group=vmspace
 initial_lvm_path=/dev/$lvm_group
 
 #domU details, replace template with name of domU
-vm_name=template
+vm_name=zen
 
 #config details for backup scripts
 part_number=1
@@ -18,10 +18,10 @@ stay_online=false
 #destination for backup, cifs or nfs 
 
 #variables needed for  sending backups to remote cifs backup_location_details
-dir_sourceource=temp_mount_point
-dir_destinationestination=template
+dir_source=temp_mount_point
+dir_destination=template
 backup_location_details="//172.20.20.15/d$ -o username=backup_user,password=backup,workgroup=172.20.20.15"
-backup_backup_type=cifs
+backup_type=cifs
 
 
 ##shutdown i startup scripts names

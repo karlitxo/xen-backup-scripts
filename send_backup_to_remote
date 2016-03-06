@@ -2,7 +2,7 @@
 reldir=`dirname $0`
 cd $reldir
 directory=`pwd`
-echo startam u direktoriju $directory
+echo starting in  $directory sending files with extensions tgz xml cfg log txt config to dest backup loc
 
 . ./config
 
