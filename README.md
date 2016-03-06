@@ -1,4 +1,4 @@
-this is set of scripts to easily backup/clone/migrate machiens in xen/libvirt technology stack. Used it on centos 6.x where xen is deploy from Xen4CentOS repo.
+this is set of scripts to easily backup/clone/migrate machiens in xen/libvirt technology stack. Used it on centos 6.x where xen is deployed from Xen4CentOS repo. 
 
 requirements:
 xen over 4 versions
@@ -24,11 +24,15 @@ to start dd backup of disks  do
 
 Result will be in form of *.tgz gzipped files in directory for every disk from file given in config with disk_list_for_dd
 
+
+
 to start filesystem backup (if applicable)  do
 
 ./make_tar_backup_of_fs
 
 Result depending if online or online parameter is used will be files online*.tgz/offline*.tgz for every disk given with disk_list_for_tar 
+
+
 
 to send backup to remote locaion 
 
@@ -36,19 +40,28 @@ to send backup to remote locaion
 
 This send tgz, log, txt, xml files to dest backup location defined in cofnig with backup_location_details. Backup destination must have directory named in config with dir_destination.
 
+
+
 to clone machine to vm_name_suffix do
 
 ./clone_machine -a suffix
 
 to create lvm create scripts for disks :
 
+
+
 ./generate_lvm_create_script
 
 result : generate_lvm_disk_script which can be used to generate exact lvm disks for domU
 
+
+
 to restore image made wirh make_dd_backup use :
 
 ./restore_dd_image  -i tgz_image_file -l path_to_lvm
+
+
+
 
 to migrate machine from one host to other use :
 
