@@ -1,6 +1,7 @@
-this is set of scripts to easily backup/clone/migrate machiens in xen/libvirt technology stack
+this is set of scripts to easily backup/clone/migrate machiens in xen/libvirt technology stack. Used it on centos 6.x where xen is deploy from Xen4CentOS repo.
 
-requirements:xen over 4 versions 
+requirements:
+xen over 4 versions
 libvirtd over 0.10
 virsh over 0.10
 virt-clone 0.6 and up
