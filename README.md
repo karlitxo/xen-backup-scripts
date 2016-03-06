@@ -10,7 +10,7 @@ root access or sudo access for mount/umount and calls to virsh and virt-clone
 
 usage :
 
-Prepare config 
+-Prepare config 
 
 Suppose that machine already exists and is up and want to be backued up.
 set parameters for domU in config  (parameters like vm_name ,stay_online, stay_started ) and  generate config for dd or tar-fs backup via script generate_disk_configs.
@@ -19,14 +19,14 @@ Content of these files will  be list of disks which domU uses.
 Change if needed to specify which disks goes to backup.
 
 
-to start dd backup of disks  do
+-to start dd backup of disks  do
 ./make_dd_backup
 
 Result will be in form of *.tgz gzipped files in directory for every disk from file given in config with disk_list_for_dd
 
 
 
-to start filesystem backup (if applicable)  do
+-to start filesystem backup (if applicable)  do
 
 ./make_tar_backup_of_fs
 
@@ -34,7 +34,7 @@ Result depending if online or online parameter is used will be files online*.tgz
 
 
 
-to send backup to remote locaion 
+-to send backup to remote locaion 
 
 ./send_backup_to_remote
 
@@ -42,13 +42,14 @@ This send tgz, log, txt, xml files to dest backup location defined in cofnig wit
 
 
 
-to clone machine to vm_name_suffix do
+-to clone machine to vm_name_suffix do
 
 ./clone_machine -a suffix
 
-to create lvm create scripts for disks :
 
 
+
+-to create lvm create scripts for disks :
 
 ./generate_lvm_create_script
 
@@ -56,14 +57,14 @@ result : generate_lvm_disk_script which can be used to generate exact lvm disks 
 
 
 
-to restore image made wirh make_dd_backup use :
+-to restore image made wirh make_dd_backup use :
 
 ./restore_dd_image  -i tgz_image_file -l path_to_lvm
 
 
 
 
-to migrate machine from one host to other use :
+-to migrate machine from one host to other use :
 
 make lvm on destination machine with script created with  ./generate_lvm_create_script (named generate_lvm_disk_script)
 for one  lvm  disk start command  on receiver :
@@ -79,6 +80,6 @@ define machine with virsh define afterwards on destination.
 
 
 
-Limitations:
+-Limitations:
 
 -for tar backup of filesystem , if domU use lvm inside , script will not work . Not implemented yet. Only can be used with partitions set with parameter part_number in config. 
