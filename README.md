@@ -59,7 +59,7 @@ result : generate_lvm_disk_script which can be used to generate exact lvm disks 
 
 -to restore image made wirh make_dd_backup use :
 
-./restore_dd_image  -i tgz_image_file -l path_to_lvm
+./restore_dd_image  -i tgz_image_file -l path_to_lvm [-f force nonintercactive ]
 
 
 
