@@ -3,7 +3,7 @@
 
 # Usage string
 appname=`basename $0`
-USAGE="Usage: ${appname} -i   <mage_file> -l <lvm_path> " 
+USAGE="Usage: ${appname} -i   <mage_file> -l <lvm_path> [-f force no input]" 
 ispis_gresku()
 {
 if [ $? -ne "0" ]; then
@@ -15,13 +15,15 @@ fi
 # check if anything is on commandline
 let $# || { ispis_gresku "Niste postavili paraetre a trebate $USAGE" 1; }  # Exit if no arguments
 
+force="false"
 
 # Handle incoming arguments
-while getopts :i:l: opt
+while getopts :i:l:f opt
 do
     case $opt in
     i) image=$OPTARG ;;
     l) lv_path=$OPTARG ;;
+    f) force="true" ;;
    \?) 	echo "Sorry no such option, please try again" ;
 echo $USAGE;
  exit 1;;
@@ -56,8 +58,12 @@ ispis_gresku "cant restore image  $image to $lv_path cause size of $lv_path ($lv
 echo please make $lv_path big atleast $lvm_size M
 fi  
 echo sleep 5 s
+if [ $force == "false" ]; then
 echo "are u sure !!! (y\\n)"
 read ans
+else
+ans="y"
+fi
 test -n $ans -a "$ans" = "y"
 ispis_gresku "youd dint choose y so i go out , make your mind please .. " 1
 echo doing real restore ...
