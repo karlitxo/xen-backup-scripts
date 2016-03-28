@@ -27,6 +27,8 @@ if [ $? -ne 0 ]; then
 echo "machine  $vm_name doesnt exits so i stop "
 exit 4
 fi
+echo Refreshing storage pool $lvm_group
+virsh pool-refresh $lvm_group
 echo checking space details
 echo "Name                  Path                               Type    Capacity  Allocation"
 echo ---------------------------------------------------------------------------------------
